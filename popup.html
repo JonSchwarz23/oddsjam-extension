@@ -1,46 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head> </head>
-	<body>
-		<style>
-			body {
-				width: 200px;
-			}
+    <head> </head>
+    <body>
+        <style>
+            body {
+                width: 200px;
+            }
 
-			.input-pair {
-				display: flex;
-			}
-			.input-pair > label {
-				flex-grow: 1;
-				padding-right: 10px;
-			}
-		</style>
-		<div class="input-pair">
-			<label for="filtersEnabled">Filters Enabled</label>
-			<input id="filtersEnabled" type="checkbox" />
-		</div>
-		<hr />
-		<div class="input-pair">
-			<label for="today">Today</label>
-			<input id="today" type="checkbox" />
-		</div>
-		<div class="input-pair">
-			<label for="tomorrow">Tomorrow</label>
-			<input id="tomorrow" type="checkbox" />
-		</div>
-		<hr />
-		<div class="input-pair">
-			<label for="hideLive">Hide Live</label>
-			<input id="hideLive" type="checkbox" />
-		</div>
-		<hr />
-		<div class="input-pair">
-			<label for="sportsbooks">Sportsbooks</label>
-			<select id="sportsbooks" multiple>
-				<option value="FanDuel">FanDuel</option>
-				<option value="DraftKings">DraftKings</option>
-			</select>
-		</div>
-		<script src="popup.js"></script>
-	</body>
+            .input-pair {
+                display: flex;
+            }
+            .input-pair > label {
+                flex-grow: 1;
+                padding-right: 10px;
+            }
+        </style>
+        <div class="input-pair">
+            <label for="filtersEnabled">Filters Enabled</label>
+            <input id="filtersEnabled" type="checkbox" />
+        </div>
+        <hr />
+        <div class="input-pair">
+            <label for="today">Today</label>
+            <input id="today" type="checkbox" />
+        </div>
+        <div class="input-pair">
+            <label for="tomorrow">Tomorrow</label>
+            <input id="tomorrow" type="checkbox" />
+        </div>
+        <hr />
+        <div class="input-pair">
+            <label for="hideLive">Hide Live</label>
+            <input id="hideLive" type="checkbox" />
+        </div>
+        <hr />
+        <div class="input-pair">
+            <label for="hideBet">Hide Already Bet</label>
+            <input id="hideBet" type="checkbox" />
+        </div>
+        <hr />
+        <div class="input-pair">
+            <label for="sportsbooks">Sportsbooks</label>
+            <select id="sportsbooks" multiple>
+                <option value="Barstool">Barstool</option>
+                <option value="BetMGM">BetMGM</option>
+                <option value="DraftKings">DraftKings</option>
+                <option value="FanDuel">FanDuel</option>
+            </select>
+        </div>
+        <hr />
+        <div class="input-pair">
+            <label for="minEdge">Minimum Edge</label>
+            <input id="minEdge" type="number" step=".1" style="max-width: 60px;" />
+        </div>
+        <script src="popup.js"></script>
+    </body>
 </html>
