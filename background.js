@@ -184,8 +184,7 @@ const filterTab = async (tab, filters) => {
             const displayRow = (row) => {
                 if (!filters.enabled) return true;
 
-                const date = row.children[3].innerText;
-
+                const date = row.children[4].innerText;
                 if (filters.today || filters.tomorrow) {
                     if ((!filters.today || !date.includes("Today")) && (!filters.tomorrow || !date.includes("Tomorrow"))) {
                         return false;
@@ -196,8 +195,8 @@ const filterTab = async (tab, filters) => {
 
                 if (filters.sportsbooks.length > 0) {
                     let valid = false;
-                    const interestedSide = row.children[2].innerText[0] === "–" ? 1 : 0;
-                    const sportsbooks = [...row.children[5].querySelectorAll("div")[interestedSide].querySelectorAll("img")].map((img) => img.alt);
+                    const interestedSide = row.children[3].innerText[0] === "–" ? 1 : 0;
+                    const sportsbooks = [...row.children[6].querySelectorAll("div")[interestedSide].querySelectorAll("img")].map((img) => img.alt);
                     for (const book of filters.sportsbooks) {
                         if (sportsbooks.includes(book)) {
                             valid = true;
@@ -208,11 +207,10 @@ const filterTab = async (tab, filters) => {
                     if (!valid) return false;
                 }
 
-                if (filters.hideBet && row.children[1].querySelector(".svg-icon-success")) return false;
+                if (filters.hideBet && row.children[2].querySelector(".svg-icon-success")) return false;
 
                 if(filters.minEdge) {
-                    let edgeString = row.children[2].innerText;
-                    console.log(edgeString);
+                    let edgeString = row.children[3].innerText;
                     if(edgeString[0] === "–") edgeString = edgeString.substring(1);
                     else edgeString = edgeString.substring(0, edgeString.length - 1);
                     const edge = parseFloat(edgeString.substring(0, edgeString.length - 1));
@@ -221,6 +219,47 @@ const filterTab = async (tab, filters) => {
 
                 return true;
             };
+
+            const trashIcon = `
+                <svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                    <title>Stockholm-icons / General / Trash</title>
+                    <desc>Created with Sketch.</desc>
+                    <defs></defs>
+                    <g id="Stockholm-icons-/-General-/-Trash" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                        <rect id="bound" x="0" y="0" width="24" height="24"></rect>
+                        <path d="M6,8 L6,20.5 C6,21.3284271 6.67157288,22 7.5,22 L16.5,22 C17.3284271,22 18,21.3284271 18,20.5 L18,8 L6,8 Z" id="round" fill="#000000" fill-rule="nonzero"></path>
+                        <path d="M14,4.5 L14,4 C14,3.44771525 13.5522847,3 13,3 L11,3 C10.4477153,3 10,3.44771525 10,4 L10,4.5 L5.5,4.5 C5.22385763,4.5 5,4.72385763 5,5 L5,5.5 C5,5.77614237 5.22385763,6 5.5,6 L18.5,6 C18.7761424,6 19,5.77614237 19,5.5 L19,5 C19,4.72385763 18.7761424,4.5 18.5,4.5 L14,4.5 Z" id="Shape" fill="#000000" opacity="0.3"></path>
+                    </g>
+                </svg>
+            `;
+
+            if(!document.querySelector("#hide-row-header")) {
+                const header = document.createElement("th");
+                header.id = "hide-row-header";
+                rows[0].insertBefore(header, rows[0].children[0]);
+            }
+
+
+            [...rows].slice(1).forEach((row) => {
+
+                if(row.querySelector("#hide-row")) return;
+
+                const hideRow = document.createElement("td");
+                hideRow.id = "hide-row";
+                hideRow.style = "z-index: 1000; cursor: pointer; opacity: 1;";
+
+                hideRow.addEventListener("click", (event) => {
+                    console.log("clicked");
+                    event.stopPropagation();
+                    event.preventDefault();
+                });
+
+                const hideRowIcon = document.createElement("span");
+                hideRowIcon.classList.add("svg-icon", "svg-icon-md", "svg-icon-danger");
+                hideRowIcon.innerHTML = trashIcon;
+                hideRow.appendChild(hideRowIcon);
+                row.insertBefore(hideRow, row.children[0]);
+            });
 
             [...rows].slice(1).forEach((row) => {
                 row.style.display = displayRow(row) ? "" : "none";
