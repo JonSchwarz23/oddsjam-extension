@@ -112,7 +112,7 @@ chrome.storage.onChanged.addListener((changes) => {
     if (changes.autoCheckSettings) {
         if (changes.autoCheckSettings.newValue.enabled && changes.autoCheckSettings.newValue.interval) {
             chrome.alarms.create("autoCheck", {
-                periodInMinutes: 0.1, //changes.autoCheckSettings.newValue.interval,
+                periodInMinutes: changes.autoCheckSettings.newValue.interval,
             });
         } else {
             chrome.alarms.clear("autoCheck");
