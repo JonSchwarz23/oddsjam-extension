@@ -82,12 +82,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                         }
 
                         row.querySelector("#extension-ev-value").innerText = "$" + ev.toFixed(2);
-                        const evPercent = (ev / stake * 100);
+                        const evPercent = (ev / stake) * 100;
 
                         evPercentElement = row.querySelector("#extension-ev-percent");
                         evPercentElement.innerText = evPercent.toFixed(2) + "%";
-                        if(evPercent < 1) evPercentElement.style.color = "red";
-                        else if(evPercent < 2.5 ) evPercentElement.style.color = "orange";
+                        if (evPercent < 0) evPercentElement.style.color = "red";
+                        else if (evPercent < 2) evPercentElement.style.color = "orange";
                         else if (evPercent > 4) evPercentElement.style.color = "green";
                     });
 
@@ -98,9 +98,50 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
 });
 
-//listed for storage update
+const now = new Date();
+now.setDate(now.getDate() + 1);
+now.setHours(4);
+
+chrome.alarms.create("clearDeletedBets", {
+    when: now / 1,
+    periodInMinutes: 24 * 60,
+});
+
 chrome.storage.onChanged.addListener((changes) => {
-    updateFilters(changes.filters.newValue);
+    if (changes.filters) updateFilters(changes.filters.newValue);
+    if (changes.autoCheckSettings) {
+        if (changes.autoCheckSettings.newValue.enabled && changes.autoCheckSettings.newValue.interval) {
+            chrome.alarms.create("autoCheck", {
+                periodInMinutes: 0.1, //changes.autoCheckSettings.newValue.interval,
+            });
+        } else {
+            chrome.alarms.clear("autoCheck");
+        }
+    }
+});
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name === "clearDeletedBets") {
+        chrome.storage.sync.get(["filters"], async (result) => {
+            const filters = result.filters;
+            filters.deletedBets = [];
+            await chrome.storage.sync.set({ filters });
+        });
+    }
+    if (alarm.name === "autoCheck") {
+        const evTabs = await getEvTabs();
+        if (evTabs.length === 0) return;
+        chrome.storage.sync.set({ autoCheckInProgress: true });
+        chrome.scripting.executeScript({
+            target: { tabId: evTabs[0].id },
+            func: async () => {
+                const icon = document.querySelector(".flaticon-refresh");
+                if (icon) {
+                    icon.click();
+                }
+            },
+        });
+    }
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -137,11 +178,45 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
 });
 
-chrome.runtime.onMessage.addListener((request, sender) => {
+chrome.runtime.onMessage.addListener(async (request, sender) => {
     if (request.type === "refreshPositiveEV") {
         chrome.storage.sync.get(["filters"], (result) => {
             filterTab(sender.tab, result.filters);
         });
+    }
+    if (request.type === "deleteBet") {
+        chrome.storage.sync.get(["filters"], (result) => {
+            if (!result.filters.deletedBets) result.filters.deletedBets = [];
+            const length = result.filters.deletedBets.length;
+            result.filters.deletedBets = result.filters.deletedBets.filter((bet) => {
+                return request.bet.date !== bet.date || request.bet.event !== bet.event || request.bet.market !== bet.market;
+            });
+            if (result.filters.deletedBets.length === length) {
+                result.filters.deletedBets.push(request.bet);
+            }
+            chrome.storage.sync.set({ filters: result.filters });
+        });
+    }
+    if (request.type === "newBets") {
+        chrome.storage.sync.set({ latestBets: request.bets });
+        const result = await chrome.storage.sync.get("window");
+        if (result.window) return;
+        const window = await chrome.windows.create({
+            url: chrome.runtime.getURL("betAlert.html"),
+            type: "popup",
+            height: 600,
+            width: 1200,
+        });
+        chrome.storage.sync.set({ window });
+    }
+});
+
+chrome.windows.onRemoved.addListener(async (windowId) => {
+    const result = await chrome.storage.sync.get("window");
+    if (result.window) {
+        if (result.window.id === windowId) {
+            chrome.storage.sync.set({ window: null });
+        }
     }
 });
 
@@ -158,11 +233,40 @@ const updateFilters = async (filters) => {
 };
 
 const filterTab = async (tab, filters) => {
+    const { autoCheckInProgress } = (await chrome.storage.sync.get("autoCheckInProgress")) || false;
+    chrome.storage.sync.set({ autoCheckInProgress: false });
     chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        func: async (filters) => {
+        func: async (filters, autoCheckInProgress) => {
             const sleep = (ms) => {
                 return new Promise((resolve) => setTimeout(resolve, ms));
+            };
+
+            const rowToKey = (row) => {
+                return {
+                    date: row.children[4].innerText.replaceAll("\n", " "),
+                    event: row.children[5].innerText.replaceAll("\n", " "),
+                    market: row.children[8].innerText.replaceAll("\n", " "),
+                };
+            };
+
+            const rowToData = (row) => {
+                const percent = row.children[3].innerText.split("\n");
+                const interestedSide = percent[0] === "–" ? 1 : 0;
+                return {
+                    percent: percent[interestedSide],
+                    date: row.children[4].innerText,
+                    event: row.children[5].innerText,
+                    odds: row.children[6].innerText.split("\n")[interestedSide].trim(),
+                    oppositeOdds: row.children[6].innerText.split("\n")[interestedSide === 0 ? 1 : 0].trim(),
+                    books: [...row.children[6].querySelectorAll("div")[interestedSide].querySelectorAll("img")].map((img) => img.alt),
+                    oddsjamOdds: row.children[7].innerText.split("\n")[interestedSide].trim(),
+                    market: row.children[8].innerText.split("\n")[interestedSide],
+                };
+            };
+
+            const compareKeys = (a, b) => {
+                return a.date === b.date && a.event === b.event && a.market === b.market;
             };
 
             let table = null;
@@ -182,16 +286,16 @@ const filterTab = async (tab, filters) => {
             }
 
             const displayRow = (row) => {
-                if (!filters.enabled) return true;
+                if (!filters.enabled) return "show";
 
                 const date = row.children[4].innerText;
                 if (filters.today || filters.tomorrow) {
                     if ((!filters.today || !date.includes("Today")) && (!filters.tomorrow || !date.includes("Tomorrow"))) {
-                        return false;
+                        return "hide";
                     }
                 }
 
-                if (filters.hideLive && date.includes("Live")) return false;
+                if (filters.hideLive && date.includes("Live")) return "hide";
 
                 if (filters.sportsbooks.length > 0) {
                     let valid = false;
@@ -204,20 +308,25 @@ const filterTab = async (tab, filters) => {
                         }
                     }
 
-                    if (!valid) return false;
+                    if (!valid) return "hide";
                 }
 
-                if (filters.hideBet && row.children[2].querySelector(".svg-icon-success")) return false;
+                if (filters.hideBet && row.children[2].querySelector(".svg-icon-success")) return "hide";
 
-                if(filters.minEdge) {
+                if (filters.minEdge) {
                     let edgeString = row.children[3].innerText;
-                    if(edgeString[0] === "–") edgeString = edgeString.substring(1);
+                    if (edgeString[0] === "–") edgeString = edgeString.substring(1);
                     else edgeString = edgeString.substring(0, edgeString.length - 1);
                     const edge = parseFloat(edgeString.substring(0, edgeString.length - 1));
-                    if(filters.minEdge > edge) return false;
+                    if (filters.minEdge > edge) return "hide";
                 }
 
-                return true;
+                if (filters.deletedBets) {
+                    const key = rowToKey(row);
+                    if (filters.deletedBets.find((bet) => compareKeys(bet, key))) return "dim";
+                }
+
+                return "show";
             };
 
             const trashIcon = `
@@ -233,23 +342,24 @@ const filterTab = async (tab, filters) => {
                 </svg>
             `;
 
-            if(!document.querySelector("#hide-row-header")) {
+            if (!document.querySelector("#hide-row-header")) {
                 const header = document.createElement("th");
                 header.id = "hide-row-header";
                 rows[0].insertBefore(header, rows[0].children[0]);
             }
 
-
             [...rows].slice(1).forEach((row) => {
-
-                if(row.querySelector("#hide-row")) return;
+                if (row.querySelector("#hide-row")) return;
 
                 const hideRow = document.createElement("td");
                 hideRow.id = "hide-row";
                 hideRow.style = "z-index: 1000; cursor: pointer; opacity: 1;";
 
                 hideRow.addEventListener("click", (event) => {
-                    console.log("clicked");
+                    chrome.runtime.sendMessage({
+                        type: "deleteBet",
+                        bet: rowToKey(hideRow.parentElement),
+                    });
                     event.stopPropagation();
                     event.preventDefault();
                 });
@@ -261,10 +371,30 @@ const filterTab = async (tab, filters) => {
                 row.insertBefore(hideRow, row.children[0]);
             });
 
+            const betsToSend = [];
+
             [...rows].slice(1).forEach((row) => {
-                row.style.display = displayRow(row) ? "" : "none";
+                const display = displayRow(row);
+                if (display === "show") {
+                    row.style.display = "";
+                    row.style.opacity = "1";
+                } else if (display === "dim") {
+                    row.style.display = "";
+                    row.style.opacity = "0.5";
+                } else row.style.display = "none";
+
+                if (display === "show" && autoCheckInProgress) {
+                    betsToSend.push(rowToData(row));
+                }
             });
+
+            if (betsToSend.length > 0) {
+                chrome.runtime.sendMessage({
+                    type: "newBets",
+                    bets: betsToSend,
+                });
+            }
         },
-        args: [filters],
+        args: [filters, autoCheckInProgress],
     });
 };

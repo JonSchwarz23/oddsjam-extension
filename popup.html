@@ -1,20 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head> </head>
-    <body>
-        <style>
-            body {
-                width: 200px;
-            }
 
-            .input-pair {
-                display: flex;
-            }
-            .input-pair > label {
-                flex-grow: 1;
-                padding-right: 10px;
-            }
-        </style>
+<head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <style>
+        body {
+            width: 400px;
+            display: flex;
+            gap: 10px;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .column {
+            flex: 1 1 auto;
+            padding: 10px;
+        }
+
+        .input-pair {
+            display: flex;
+            margin-bottom: 3px;
+            align-items: center;
+        }
+
+        .input-pair>label {
+            flex-grow: 1;
+            padding-right: 10px;
+        }
+
+        button {
+            height: 27px;
+            background-color: #4dabf7;
+            border: 1px solid black;
+            margin: 0 5px;
+            text-align: center;
+        }
+
+        button:hover {
+            background-color: #74c0fc;
+        }
+
+        button:active {
+            background-color: #339af0;
+        }
+    </style>
+    <div class="column" style="border-right: 1px solid black;">
         <div class="input-pair">
             <label for="filtersEnabled">Filters Enabled</label>
             <input id="filtersEnabled" type="checkbox" />
@@ -44,8 +78,15 @@
             <select id="sportsbooks" multiple>
                 <option value="Barstool">Barstool</option>
                 <option value="BetMGM">BetMGM</option>
+                <option value="Borgota">Borgota</option>
+                <option value="Caesars">Caesars</option>
                 <option value="DraftKings">DraftKings</option>
                 <option value="FanDuel">FanDuel</option>
+                <option value="FOX Bet">FOX Bet</option>
+                <option value="SugarHouse">SugarHouse</option>
+                <option value="TwinSpires">TwinSpires</option>
+                <option value="Unibet">Unibet</option>
+                <option value="WynnBET">WynnBET</option>
             </select>
         </div>
         <hr />
@@ -53,6 +94,36 @@
             <label for="minEdge">Minimum Edge</label>
             <input id="minEdge" type="number" step=".1" style="max-width: 60px;" />
         </div>
-        <script src="popup.js"></script>
-    </body>
+    </div>
+    <div class="column" style="padding-left: 0;">
+        <div class="input-pair">
+            <label for="autoCheck">Auto Check Enabled</label>
+            <input id="autoCheck" type="checkbox" />
+        </div>
+        <div class="input-pair">
+            <label for="autoCheckInterval">Auto Check Interval</label>
+            <input id="autoCheckInterval" type="number" style="max-width: 60px;" min="1" value="1" />
+        </div>
+        <div class="input-pair">
+            <label for="enableSounds">Enable Sounds</label>
+            <input id="enableSounds" type="checkbox" />
+        </div>
+        <hr />
+        <div class="input-pair">
+            <label for="bankroll">Bankroll</label>
+            <input id="bankroll" type="number" style="max-width: 60px;" min="1" value="0" />
+        </div>
+        <div class="input-pair">
+            <label for="kellyMultiplier">Kelly Multiplier</label>
+            <input id="kellyMultiplier" type="number" style="max-width: 60px;" min="0" value="1" step=".1" />
+        </div>
+        <hr />
+        <div style="display: flex; justify-content: center;">
+            <button id="clearHiddenBets">Clear Hidden Bets</button>
+        </div>
+
+    </div>
+    <script src="popup.js"></script>
+</body>
+
 </html>
